@@ -89,7 +89,7 @@ class OAuthService {
    * Build Google OAuth URL
    */
   getGoogleAuthUrl(state) {
-    const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
     
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -108,7 +108,7 @@ class OAuthService {
    * Build Facebook OAuth URL
    */
   getFacebookAuthUrl(state) {
-    const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
     
     const params = new URLSearchParams({
       client_id: process.env.FACEBOOK_CLIENT_ID,
@@ -125,7 +125,7 @@ class OAuthService {
    * Build GitHub OAuth URL
    */
   getGithubAuthUrl(state) {
-    const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
     
     const params = new URLSearchParams({
       client_id: process.env.GITHUB_CLIENT_ID,
@@ -147,7 +147,7 @@ class OAuthService {
    */
   async exchangeGoogleCode(code) {
     try {
-      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
       
       const response = await axios.post('https://oauth2.googleapis.com/token', {
         client_id: process.env.GOOGLE_CLIENT_ID,
@@ -175,7 +175,7 @@ class OAuthService {
    */
   async exchangeFacebookCode(code) {
     try {
-      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
       
       const params = new URLSearchParams({
         client_id: process.env.FACEBOOK_CLIENT_ID,
@@ -415,7 +415,7 @@ class OAuthService {
       };
       
     } catch (error) {
-      console.error(`❌ ${provider} OAuth flow error:`, error.message);
+      console.error(`${provider} OAuth flow error:`, error.message);
       throw error;
     }
   }
