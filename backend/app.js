@@ -29,6 +29,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/ping', (req, res) => {
+  res.json({
+    status: 'alive',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    message: 'OAuth app is running!'
+  });
+});
+
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
