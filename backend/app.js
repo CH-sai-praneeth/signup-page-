@@ -29,6 +29,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.get('/ping', (req, res) => {
+  res.json({
+    status: 'alive',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    message: 'OAuth app is running!'
+  });
+});
+
 // OAuth initiation routes (same as before)
 app.get('/auth/google', (req, res) => {
   const state = oauthService.generateState();
