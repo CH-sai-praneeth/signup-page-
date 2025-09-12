@@ -81,12 +81,8 @@ const setupDatabaseEvents = () => {
 
 //Initialize database connection with events
 const initializeDatabase = async () => {
-  if (process.env.DISABLE_DB === 'true') {
-    console.log('Database connection disabled via environment variable');
-    return;
-  }
-  setupDatabaseEvents();
-  await connectDB();
+  console.log('Database connection disabled for testing');
+  return;
 };
 
 // Export functions for use in other files
