@@ -10,7 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000', 
+    'https://my-oauth-frontend-cqvfs72ci-sai-praneeths-projects-c891b21b.vercel.app'
+  ],
   credentials: true
 }));
 
@@ -38,40 +41,6 @@ app.get('/ping', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>OAuth Signup</title>
-        <style>
-            body { font-family: Arial; padding: 50px; text-align: center; }
-            .login-btn { 
-                display: inline-block; 
-                margin: 10px; 
-                padding: 15px 30px; 
-                text-decoration: none; 
-                border-radius: 5px;
-                color: white;
-                font-weight: bold;
-            }
-            .google { background: #db4437; }
-            .facebook { background: #3b5998; }
-            .github { background: #333; }
-        </style>
-    </head>
-    <body>
-        <h1>Welcome! Sign up with your social account</h1>
-        
-        <a href="/auth/google" class="login-btn google">Login with Google</a>
-        <a href="/auth/facebook" class="login-btn facebook">Login with Facebook</a>
-        <a href="/auth/github" class="login-btn github">Login with GitHub</a>
-        
-        <p>Choose your preferred social login method above</p>
-    </body>
-    </html>
-  `);
-});
 
 // OAuth initiation routes (same as before)
 app.get('/auth/google', (req, res) => {
