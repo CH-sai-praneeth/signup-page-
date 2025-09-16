@@ -81,8 +81,8 @@ const setupDatabaseEvents = () => {
 
 //Initialize database connection with events
 const initializeDatabase = async () => {
-  console.log('Database connection disabled for testing');
-  return;
+  setupDatabaseEvents();
+  await connectDB();
 };
 
 // Export functions for use in other files
