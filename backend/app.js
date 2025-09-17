@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({
   origin: [
     'http://localhost:3000', 
-    'https://my-oauth-frontend-cqvfs72ci-sai-praneeths-projects-c891b21b.vercel.app'
+    'https://my-oauth-frontend-h5se8p3ha-sai-praneeths-projects-c891b21b.vercel.app'
   ],
   credentials: true
 }));
