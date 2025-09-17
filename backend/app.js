@@ -46,6 +46,8 @@ app.get('/ping', (req, res) => {
 app.get('/auth/google', (req, res) => {
   const state = oauthService.generateState();
   const authUrl = oauthService.getGoogleAuthUrl(state);
+  console.log('🔍 BASE_URL from env:', process.env.BASE_URL);
+  console.log('🔍 Generated Google OAuth URL:', authUrl);
   console.log('Redirecting to Google OAuth');
   res.redirect(authUrl);
 });
