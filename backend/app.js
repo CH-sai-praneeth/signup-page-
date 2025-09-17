@@ -88,22 +88,49 @@ app.get('/auth/github', (req, res) => {
 // ENHANCED OAuth callbacks with complete token exchange
 app.get('/auth/google/callback', async (req, res) => {
   try {
+    console.log('🔄 [GOOGLE CALLBACK] Hit');
+    console.log('📥 Query Params:', req.query);
+    console.log('📦 Session State:', req.session?.oauthState);
+
     const { code, error, state } = req.query;
 
-    // ✅ validate state
-    if (error || !code || state !== req.session.oauthState) {
-      console.error('❌ OAuth state mismatch or missing code');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    // Step 1: Check if Google sent an error
+    if (error) {
+      console.error('❌ Google returned an error:', error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=google_error`);
     }
 
+    // Step 2: Make sure we got a code
+    if (!code) {
+      console.error('❌ Missing authorization code in callback');
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=missing_code`);
+    }
+
+    // Step 3: Validate state parameter for CSRF protection
+    if (!state || state !== req.session?.oauthState) {
+      console.error('❌ OAuth state mismatch!');
+      console.log('Expected state:', req.session?.oauthState);
+      console.log('Received state:', state);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=state_mismatch`);
+    }
+
+    // Step 4: Complete token exchange
+    console.log('🔑 Exchanging authorization code for tokens...');
     const result = await oauthService.completeOAuthFlow('google', code);
+
+    console.log('✅ OAuth Exchange Successful!');
+    console.log('👤 Authenticated User:', result.user?.email);
+    console.log('🔗 Redirecting to frontend:', `${process.env.FRONTEND_URL || 'http://localhost:3000'}/welcome`);
+
+    // Step 5: Redirect to frontend with token
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/welcome?token=${result.token}`);
     
-  } catch (error) {
-    console.error('Google OAuth error:', error.message);
+  } catch (err) {
+    console.error('❌ [GOOGLE CALLBACK] Uncaught error:', err.message);
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
   }
 });
+
 
 
 app.get('/auth/facebook/callback', async (req, res) => {
