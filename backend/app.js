@@ -1,21 +1,39 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const session = require('express-session');
+const helmet = require('helmet');
 const { initializeDatabase } = require('./src/config/database');
 const oauthService = require('./src/services/oauthService');
 
 initializeDatabase();
 
 const app = express();
+app.set('trust proxy', 1); // important for Render / Vercel proxying
+
+// Add helmet for basic security headers
+app.use(helmet());
+
+// Enable session middleware for storing OAuth state
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // secure only in prod
+    sameSite: 'none'
+  }
+}));
+
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
   origin: [
-    'http://localhost:3000', 
-    'https://my-oauth-frontend-h5se8p3ha-sai-praneeths-projects-c891b21b.vercel.app'
+    process.env.FRONTEND_URL || 'http://localhost:3000'
   ],
   credentials: true
 }));
+
 
 app.use(express.json());
 
@@ -45,6 +63,7 @@ app.get('/ping', (req, res) => {
 // OAuth initiation routes (same as before)
 app.get('/auth/google', (req, res) => {
   const state = oauthService.generateState();
+  req.session.oauthState = state;
   const authUrl = oauthService.getGoogleAuthUrl(state);
   console.log('🔍 BASE_URL from env:', process.env.BASE_URL);
   console.log('🔍 Generated Google OAuth URL:', authUrl);
@@ -69,12 +88,14 @@ app.get('/auth/github', (req, res) => {
 // ENHANCED OAuth callbacks with complete token exchange
 app.get('/auth/google/callback', async (req, res) => {
   try {
-    const { code, error } = req.query;
-    
-    if (error || !code) {
+    const { code, error, state } = req.query;
+
+    // ✅ validate state
+    if (error || !code || state !== req.session.oauthState) {
+      console.error('❌ OAuth state mismatch or missing code');
       return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
     }
-    
+
     const result = await oauthService.completeOAuthFlow('google', code);
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/welcome?token=${result.token}`);
     
@@ -83,6 +104,7 @@ app.get('/auth/google/callback', async (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
   }
 });
+
 
 app.get('/auth/facebook/callback', async (req, res) => {
   try {
