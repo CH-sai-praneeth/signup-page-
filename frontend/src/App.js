@@ -1,4 +1,5 @@
 import React from 'react';
+import SmartClaimsPage from './SmartClaimsPage';
 
 const Welcome = () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -38,7 +39,7 @@ const Welcome = () => {
       </div>
 
       <button 
-        onClick={() => window.location.href = '/'}
+        onClick={() => window.location.href = '/claims'}
         style={{ 
           padding: '15px 30px', 
           fontSize: '16px', 
@@ -50,7 +51,7 @@ const Welcome = () => {
           marginTop: '20px'
         }}
       >
-        Continue to Dashboard
+        Start Insurance Claim
       </button>
       
       <button 
@@ -75,10 +76,14 @@ const Welcome = () => {
 
 function App() {
   const handleSocialLogin = (provider) => {
-    window.location.href = `http://localhost:3001/auth/${provider}`;
+    window.location.href = `https://signup-page-b4tb.onrender.com/auth/${provider}`;
   };
 
   const currentPath = window.location.pathname;
+  
+  if (currentPath === '/claims') {
+    return <SmartClaimsPage />;
+  }
   
   // Show welcome page after OAuth success
   if (currentPath === '/welcome') {
