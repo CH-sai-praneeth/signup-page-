@@ -10,6 +10,9 @@ function App() {
   };
 
   const currentPath = window.location.pathname;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasToken = urlParams.get('token');
   
   // Direct redirect to claims after OAuth success or if accessing /claims
   if (currentPath === '/claims' || currentPath === '/welcome') {
