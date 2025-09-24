@@ -6,6 +6,9 @@ const helmet = require('helmet');
 const { initializeDatabase } = require('./src/config/database');
 const oauthService = require('./src/services/oauthService');
 
+console.log('🔍 Environment check - BASE_URL:', process.env.BASE_URL);
+console.log('🔍 Environment check - BACKEND_URL:', process.env.BACKEND_URL);
+
 initializeDatabase();
 
 const app = express();
