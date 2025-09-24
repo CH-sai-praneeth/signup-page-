@@ -38,8 +38,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
         
         if (token) {
           localStorage.setItem('authToken', token);
-          // Clean up URL
-          window.history.replaceState({}, document.title, window.location.pathname);
         }
         
         // Check for existing token
@@ -56,6 +54,8 @@ const SmartClaimsPage = ({ backendUrl }) => {
             const userData = await response.json();
             setUser(userData.user);
             setIsAuthenticated(true);
+            // Clean up URL after successful authentication
+            window.history.replaceState({}, document.title, window.location.pathname);
           } else {
             // Invalid token
             localStorage.removeItem('authToken');
@@ -81,7 +81,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
   }, [BACKEND_URL]);
 
   const redirectToLogin = () => {
-    window.location.href = '/';
+    window.location.href = window.location.origin;
   };
 
   // Logout function

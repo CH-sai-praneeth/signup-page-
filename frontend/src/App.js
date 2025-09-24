@@ -13,11 +13,15 @@ function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const hasToken = urlParams.get('token');
   
-  // Check routing conditions - simplified logic
-  if (currentPath === '/claims' || currentPath === '/welcome' || hasToken) {
-    // Save token if it exists
+  // Enhanced authentication check
+  const hasStoredToken = localStorage.getItem('authToken');
+  const shouldShowClaims = hasToken || (currentPath === '/claims' && hasStoredToken);
+
+  if (shouldShowClaims) {
+    // Save token if it exists in URL
     if (hasToken) {
       localStorage.setItem('authToken', hasToken);
+      console.log('✅ Token saved to localStorage');
     }
     
     return <SmartClaimsPage backendUrl={BACKEND_URL} />;

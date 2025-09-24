@@ -148,17 +148,17 @@ app.get('/auth/google/callback', async (req, res) => {
 
     if (error) {
       console.error('❌ Google OAuth error:', error);
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=google_error`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=google_error`);
     }
 
     if (!code) {
       console.error('❌ Missing authorization code');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=missing_code`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=google_error`);
     }
 
     if (!state || state !== req.session?.oauthState) {
       console.error('❌ OAuth state mismatch');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=state_mismatch`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=state_mismatch`);
     }
 
     console.log('🔑 Exchanging code for token...');
@@ -171,7 +171,7 @@ app.get('/auth/google/callback', async (req, res) => {
     
   } catch (err) {
     console.error('❌ [GOOGLE CALLBACK] Error:', err.message);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=oauth_failed`);
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=oauth_failed`);
   }
 });
 
@@ -180,15 +180,15 @@ app.get('/auth/facebook/callback', async (req, res) => {
     const { code, error } = req.query;
     
     if (error || !code) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=oauth_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=oauth_failed`);
     }
     
     const result = await oauthService.completeOAuthFlow('facebook', code);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?token=${result.token}`);
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?token=${result.token}`);
     
   } catch (error) {
     console.error('❌ Facebook OAuth error:', error.message);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=oauth_failed`);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=oauth_failed`);
   }
 });
 
@@ -197,7 +197,7 @@ app.get('/auth/github/callback', async (req, res) => {
     const { code, error } = req.query;
     
     if (error || !code) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=oauth_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=oauth_failed`);
     }
     
     const result = await oauthService.completeOAuthFlow('github', code);
@@ -205,7 +205,7 @@ app.get('/auth/github/callback', async (req, res) => {
     
   } catch (error) {
     console.error('❌ GitHub OAuth error:', error.message);
-    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/?error=oauth_failed`);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?error=oauth_failed`);
   }
 });
 
