@@ -10,31 +10,20 @@ function App() {
   };
 
   const currentPath = window.location.pathname;
-  const currentSearch = window.location.search;
-  
-  // 🐛 DEBUG: Log what we're checking
-  console.log('🔍 DEBUG - Current path:', currentPath);
-  console.log('🔍 DEBUG - Current search:', currentSearch);
-  
-  // Check for token in URL
   const urlParams = new URLSearchParams(window.location.search);
   const hasToken = urlParams.get('token');
   
-  console.log('🔍 DEBUG - Has token:', !!hasToken);
-  console.log('🔍 DEBUG - Token preview:', hasToken ? hasToken.substring(0, 50) + '...' : 'None');
-  
-  // Check routing conditions
-  const shouldShowClaims = currentPath === '/claims' || currentPath === '/welcome' || hasToken;
-  console.log('🔍 DEBUG - Should show claims page:', shouldShowClaims);
-  
-  // 🔧 FIX: Check for /claims path OR if there's a token in URL
-  if (shouldShowClaims) {
-    console.log('✅ DEBUG - Showing Smart Claims Page');
+  // Check routing conditions - simplified logic
+  if (currentPath === '/claims' || currentPath === '/welcome' || hasToken) {
+    // Save token if it exists
+    if (hasToken) {
+      localStorage.setItem('authToken', hasToken);
+    }
+    
     return <SmartClaimsPage backendUrl={BACKEND_URL} />;
   }
 
-  console.log('❌ DEBUG - Showing Login Page');
-  
+  // Login page
   return (
     <div style={{ 
       padding: '50px', 
@@ -47,22 +36,6 @@ function App() {
       alignItems: 'center',
       justifyContent: 'center'
     }}>
-      {/* 🐛 DEBUG INFO - Remove this after fixing */}
-      <div style={{
-        position: 'fixed',
-        top: '10px',
-        left: '10px',
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        color: 'white',
-        padding: '10px',
-        fontSize: '12px',
-        borderRadius: '5px',
-        zIndex: 1000
-      }}>
-        <div>Path: {currentPath}</div>
-        <div>Token: {hasToken ? '✅ Found' : '❌ Missing'}</div>
-        <div>Should show claims: {shouldShowClaims ? 'YES' : 'NO'}</div>
-      </div>
       
       {/* Header */}
       <div style={{
@@ -117,6 +90,8 @@ function App() {
               transition: 'all 0.3s ease',
               boxShadow: '0 4px 12px rgba(66, 133, 244, 0.3)'
             }}
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
           >
             🔍 Continue with Google
           </button>
@@ -139,6 +114,8 @@ function App() {
               transition: 'all 0.3s ease',
               boxShadow: '0 4px 12px rgba(24, 119, 242, 0.3)'
             }}
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
           >
             📘 Continue with Facebook
           </button>
@@ -161,6 +138,8 @@ function App() {
               transition: 'all 0.3s ease',
               boxShadow: '0 4px 12px rgba(51, 51, 51, 0.3)'
             }}
+            onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
           >
             🐙 Continue with GitHub
           </button>
