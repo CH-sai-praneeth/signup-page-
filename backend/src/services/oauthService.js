@@ -89,7 +89,7 @@ class OAuthService {
    * Build Google OAuth URL
    */
   getGoogleAuthUrl(state) {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'https://signup-page-b4tb.onrender.com';
     
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
@@ -108,7 +108,7 @@ class OAuthService {
    * Build Facebook OAuth URL
    */
   getFacebookAuthUrl(state) {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'https://signup-page-b4tb.onrender.com';
     
     const params = new URLSearchParams({
       client_id: process.env.FACEBOOK_CLIENT_ID,
@@ -125,7 +125,7 @@ class OAuthService {
    * Build GitHub OAuth URL
    */
   getGithubAuthUrl(state) {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+    const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'https://signup-page-b4tb.onrender.com';
     
     const params = new URLSearchParams({
       client_id: process.env.GITHUB_CLIENT_ID,
