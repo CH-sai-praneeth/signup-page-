@@ -7,11 +7,78 @@ const crypto = require('crypto');
 class PropertyDataService {
 
   // ===========================
-  // 🏠 PROPERTY DATA APIS
+  // 🗺️ GOOGLE PLACES API FOR ADDRESS SUGGESTIONS
   // ===========================
 
   /**
-   * Get property data from Datafiniti API
+   * Get address suggestions from Google Places API
+   */
+  async getAddressSuggestions(input) {
+    try {
+      if (!process.env.GOOGLE_PLACES_API_KEY) {
+        console.log('⚠️ Google Places API key not configured, using mock suggestions');
+        return [
+          `${input} Street, Sample City, ST`,
+          `${input} Avenue, Sample City, ST`,
+          `${input} Drive, Sample City, ST`,
+          `${input} Road, Sample City, ST`,
+          `${input} Boulevard, Sample City, ST`
+        ];
+      }
+
+      console.log(`🔍 Getting address suggestions for: ${input}`);
+      
+      const response = await axios.get('https://maps.googleapis.com/maps/api/place/autocomplete/json', {
+        params: {
+          input: input,
+          types: 'address',
+          components: 'country:us', // Restrict to US addresses
+          key: process.env.GOOGLE_PLACES_API_KEY
+        },
+        timeout: 5000
+      });
+
+      if (response.data.status === 'OK' && response.data.predictions) {
+        const suggestions = response.data.predictions.map(prediction => prediction.description);
+        console.log(`✅ Found ${suggestions.length} address suggestions from Google Places`);
+        return suggestions.slice(0, 5); // Return top 5 suggestions
+      }
+
+      if (response.data.status === 'ZERO_RESULTS') {
+        console.log('⚠️ Google Places returned zero results');
+        return this.getMockAddressSuggestions(input);
+      }
+
+      console.error('❌ Google Places API error:', response.data.status);
+      return this.getMockAddressSuggestions(input);
+      
+    } catch (error) {
+      console.error('❌ Google Places API error:', error.response?.data || error.message);
+      
+      // Fallback to mock suggestions
+      return this.getMockAddressSuggestions(input);
+    }
+  }
+
+  /**
+   * Get mock address suggestions as fallback
+   */
+  getMockAddressSuggestions(input) {
+    return [
+      `${input} Street, Sample City, ST`,
+      `${input} Avenue, Sample City, ST`,
+      `${input} Drive, Sample City, ST`,
+      `${input} Road, Sample City, ST`,
+      `${input} Boulevard, Sample City, ST`
+    ];
+  }
+
+  // ===========================
+  // 🏠 DATAFINITI API FOR PROPERTY DATA
+  // ===========================
+
+  /**
+   * Get property data from Datafiniti API (Primary source for building/house info)
    */
   async getPropertyFromDatafiniti(address) {
     try {
@@ -31,58 +98,63 @@ class PropertyDataService {
           'Authorization': `Bearer ${process.env.DATAFINITI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 10000
+        timeout: 15000
       });
 
       if (response.data.records && response.data.records.length > 0) {
         const property = response.data.records[0];
-        
+        console.log('✅ Property data found from Datafiniti');
         return this.normalizePropertyData('datafiniti', property);
       }
       
+      console.log('⚠️ No property data found in Datafiniti');
       return null;
       
     } catch (error) {
       console.error('❌ Datafiniti API error:', error.response?.data || error.message);
-      throw new Error('Failed to fetch property data from Datafiniti');
+      return null;
     }
   }
 
+  // ===========================
+  // 🏢 ALTERNATIVE PROPERTY DATA APIS
+  // ===========================
+
   /**
-   * Get property data from RentSpree API (alternative)
+   * Get property data from RentCast API (Alternative source)
    */
-  async getPropertyFromRentSpree(address) {
+  async getPropertyFromRentCast(address) {
     try {
-      console.log(`🔍 Fetching property data from RentSpree for: ${address}`);
+      console.log(`🔍 Fetching property data from RentCast for: ${address}`);
       
-      if (!process.env.RENTSPREE_API_KEY) {
-        console.log('⚠️ RentSpree API key not configured, skipping');
+      if (!process.env.RENTCAST_API_KEY) {
+        console.log('⚠️ RentCast API key not configured, skipping');
         return null;
       }
 
-      const response = await axios.get('https://api.rentspree.com/v1/properties/search', {
+      const response = await axios.get('https://api.rentcast.io/v1/properties', {
         params: {
           address: address,
           limit: 1
         },
         headers: {
-          'Authorization': `Bearer ${process.env.RENTSPREE_API_KEY}`,
-          'Content-Type': 'application/json'
+          'Accept': 'application/json',
+          'X-Api-Key': process.env.RENTCAST_API_KEY
         },
         timeout: 10000
       });
 
-      if (response.data.data && response.data.data.length > 0) {
-        const property = response.data.data[0];
-        
-        return this.normalizePropertyData('rentspree', property);
+      if (response.data && response.data.length > 0) {
+        const property = response.data[0];
+        console.log('✅ Property data found from RentCast');
+        return this.normalizePropertyData('rentcast', property);
       }
       
       return null;
       
     } catch (error) {
-      console.error('❌ RentSpree API error:', error.response?.data || error.message);
-      throw new Error('Failed to fetch property data from RentSpree');
+      console.error('❌ RentCast API error:', error.response?.data || error.message);
+      return null;
     }
   }
 
@@ -112,7 +184,7 @@ class PropertyDataService {
 
       if (response.data.props && response.data.props.length > 0) {
         const property = response.data.props[0];
-        
+        console.log('✅ Property data found from Zillow');
         return this.normalizePropertyData('zillow', property);
       }
       
@@ -120,9 +192,13 @@ class PropertyDataService {
       
     } catch (error) {
       console.error('❌ Zillow API error:', error.response?.data || error.message);
-      throw new Error('Failed to fetch property data from Zillow');
+      return null;
     }
   }
+
+  // ===========================
+  // 🔄 DATA NORMALIZATION
+  // ===========================
 
   /**
    * Normalize property data from different API sources
@@ -138,37 +214,36 @@ class PropertyDataService {
         case 'datafiniti':
           normalizedData = {
             ...normalizedData,
-            yearBuilt: rawData.yearBuilt?.toString() || '',
-            squareFeet: rawData.livingSpace?.toString() || rawData.lotSize?.toString() || '',
-            propertyType: rawData.propertyType || '',
-            bedrooms: rawData.numBedrooms?.toString() || '',
-            bathrooms: rawData.numBathrooms?.toString() || '',
-            stories: this.estimateStories(rawData.livingSpace, rawData.propertyType),
-            primaryMaterial: this.estimateMaterial(rawData.yearBuilt, rawData.propertyType),
-            roofType: this.estimateRoofType(rawData.yearBuilt, rawData.propertyType),
-            lotSize: rawData.lotSize?.toString() || '',
+            yearBuilt: rawData.yearBuilt?.toString() || rawData.dateBuilt?.toString() || '',
+            squareFeet: rawData.livingSpace?.toString() || rawData.livingArea?.toString() || rawData.squareFootage?.toString() || '',
+            propertyType: this.normalizePropertyType(rawData.propertyType || rawData.homeType),
+            bedrooms: rawData.numBedrooms?.toString() || rawData.bedrooms?.toString() || '',
+            bathrooms: rawData.numBathrooms?.toString() || rawData.bathrooms?.toString() || rawData.fullBaths?.toString() || '',
+            stories: rawData.stories?.toString() || this.estimateStories(rawData.livingSpace || rawData.livingArea, rawData.propertyType),
+            primaryMaterial: this.estimateMaterial(rawData.yearBuilt || rawData.dateBuilt, rawData.propertyType),
+            roofType: this.estimateRoofType(rawData.yearBuilt || rawData.dateBuilt, rawData.propertyType),
             address: rawData.address || rawData.streetAddress || '',
             city: rawData.city || '',
             state: rawData.state || rawData.province || '',
-            zipCode: rawData.postalCode || ''
+            zipCode: rawData.postalCode || rawData.zipCode || ''
           };
           break;
 
-        case 'rentspree':
+        case 'rentcast':
           normalizedData = {
             ...normalizedData,
-            yearBuilt: rawData.year_built?.toString() || '',
-            squareFeet: rawData.square_feet?.toString() || '',
-            propertyType: rawData.property_type || '',
+            yearBuilt: rawData.yearBuilt?.toString() || '',
+            squareFeet: rawData.squareFootage?.toString() || '',
+            propertyType: this.normalizePropertyType(rawData.propertyType),
             bedrooms: rawData.bedrooms?.toString() || '',
             bathrooms: rawData.bathrooms?.toString() || '',
-            stories: this.estimateStories(rawData.square_feet, rawData.property_type),
-            primaryMaterial: this.estimateMaterial(rawData.year_built, rawData.property_type),
-            roofType: this.estimateRoofType(rawData.year_built, rawData.property_type),
+            stories: rawData.stories?.toString() || this.estimateStories(rawData.squareFootage, rawData.propertyType),
+            primaryMaterial: this.estimateMaterial(rawData.yearBuilt, rawData.propertyType),
+            roofType: this.estimateRoofType(rawData.yearBuilt, rawData.propertyType),
             address: rawData.address || '',
             city: rawData.city || '',
             state: rawData.state || '',
-            zipCode: rawData.zip_code || ''
+            zipCode: rawData.zipcode || ''
           };
           break;
 
@@ -177,13 +252,12 @@ class PropertyDataService {
             ...normalizedData,
             yearBuilt: rawData.yearBuilt?.toString() || '',
             squareFeet: rawData.livingArea?.toString() || '',
-            propertyType: rawData.propertyType || '',
+            propertyType: this.normalizePropertyType(rawData.propertyType),
             bedrooms: rawData.bedrooms?.toString() || '',
             bathrooms: rawData.bathrooms?.toString() || '',
             stories: rawData.stories?.toString() || this.estimateStories(rawData.livingArea, rawData.propertyType),
             primaryMaterial: this.estimateMaterial(rawData.yearBuilt, rawData.propertyType),
             roofType: this.estimateRoofType(rawData.yearBuilt, rawData.propertyType),
-            lotSize: rawData.lotAreaValue?.toString() || '',
             address: rawData.streetAddress || '',
             city: rawData.city || '',
             state: rawData.state || '',
@@ -195,13 +269,29 @@ class PropertyDataService {
           throw new Error(`Unsupported data source: ${source}`);
       }
 
-      console.log('✅ Property data normalized:', normalizedData);
+      console.log('✅ Property data normalized from', source);
       return normalizedData;
       
     } catch (error) {
       console.error('❌ Data normalization error:', error.message);
       return null;
     }
+  }
+
+  // ===========================
+  // 🛠️ HELPER METHODS
+  // ===========================
+
+  normalizePropertyType(type) {
+    if (!type) return '';
+    
+    const typeStr = type.toString().toLowerCase();
+    if (typeStr.includes('single') || typeStr.includes('detached')) return 'Single Family';
+    if (typeStr.includes('town') || typeStr.includes('row')) return 'Townhouse';
+    if (typeStr.includes('condo') || typeStr.includes('condominium')) return 'Condo';
+    if (typeStr.includes('multi') || typeStr.includes('duplex')) return 'Multi-Family';
+    
+    return 'Single Family'; // default
   }
 
   /**
@@ -259,18 +349,23 @@ class PropertyDataService {
     return 'asphalt'; // default
   }
 
+  // ===========================
+  // 🎯 MAIN PUBLIC METHODS
+  // ===========================
+
   /**
-   * Main method to get property data - tries multiple sources
+   * Main method to get property data - tries multiple sources with Datafiniti first
    */
   async getPropertyData(address) {
     try {
       console.log(`🏠 Starting property data search for: ${address}`);
       
-      // Try multiple data sources in order of preference
+      // Try Datafiniti first (primary source for building/house info)
+      // Then try alternative sources
       const dataSources = [
         () => this.getPropertyFromDatafiniti(address),
-        () => this.getPropertyFromZillow(address),
-        () => this.getPropertyFromRentSpree(address)
+        () => this.getPropertyFromRentCast(address),
+        () => this.getPropertyFromZillow(address)
       ];
 
       for (const getDataFromSource of dataSources) {
@@ -292,7 +387,34 @@ class PropertyDataService {
       
     } catch (error) {
       console.error('❌ Property data search failed:', error.message);
-      throw error;
+      return this.generateMockPropertyData(address);
+    }
+  }
+
+  /**
+   * Combined search - get both address suggestions and property data
+   */
+  async searchAddressAndProperty(address) {
+    try {
+      console.log(`🔍 Combined search for: ${address}`);
+      
+      // Always try to get property data for complete addresses
+      const propertyData = await this.getPropertyData(address);
+
+      return {
+        success: true,
+        propertyData: propertyData,
+        timestamp: new Date().toISOString()
+      };
+      
+    } catch (error) {
+      console.error('❌ Combined search error:', error.message);
+      return {
+        success: false,
+        propertyData: this.generateMockPropertyData(address),
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
     }
   }
 
@@ -322,154 +444,8 @@ class PropertyDataService {
   }
 
   // ===========================
-  // 🗺️ GOOGLE PLACES API INTEGRATION
+  // 🏥 API HEALTH CHECK
   // ===========================
-
-  /**
-   * Get address suggestions from Google Places API
-   */
-  async getAddressSuggestions(input) {
-    try {
-      if (!process.env.GOOGLE_PLACES_API_KEY) {
-        console.log('⚠️ Google Places API key not configured, using mock suggestions');
-        return [
-          `${input} Street, Sample City, ST`,
-          `${input} Avenue, Sample City, ST`,
-          `${input} Drive, Sample City, ST`,
-          `${input} Road, Sample City, ST`,
-          `${input} Boulevard, Sample City, ST`
-        ];
-      }
-
-      console.log(`🔍 Getting address suggestions for: ${input}`);
-      
-      const response = await axios.get('https://maps.googleapis.com/maps/api/place/autocomplete/json', {
-        params: {
-          input: input,
-          types: 'address',
-          components: 'country:us', // Restrict to US addresses
-          key: process.env.GOOGLE_PLACES_API_KEY
-        },
-        timeout: 5000
-      });
-
-      if (response.data.predictions) {
-        const suggestions = response.data.predictions.map(prediction => prediction.description);
-        console.log(`✅ Found ${suggestions.length} address suggestions`);
-        return suggestions.slice(0, 5); // Return top 5 suggestions
-      }
-
-      return [];
-      
-    } catch (error) {
-      console.error('❌ Google Places API error:', error.response?.data || error.message);
-      
-      // Fallback to mock suggestions
-      return [
-        `${input} Street, Sample City, ST`,
-        `${input} Avenue, Sample City, ST`,
-        `${input} Drive, Sample City, ST`
-      ];
-    }
-  }
-
-  /**
-   * Get detailed place information from Google Places API
-   */
-  async getPlaceDetails(placeId) {
-    try {
-      if (!process.env.GOOGLE_PLACES_API_KEY) {
-        console.log('⚠️ Google Places API key not configured');
-        return null;
-      }
-
-      console.log(`🔍 Getting place details for: ${placeId}`);
-      
-      const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
-        params: {
-          place_id: placeId,
-          fields: 'formatted_address,address_components,geometry',
-          key: process.env.GOOGLE_PLACES_API_KEY
-        },
-        timeout: 5000
-      });
-
-      if (response.data.result) {
-        console.log('✅ Place details retrieved');
-        return response.data.result;
-      }
-
-      return null;
-      
-    } catch (error) {
-      console.error('❌ Google Places details error:', error.response?.data || error.message);
-      throw new Error('Failed to get place details');
-    }
-  }
-
-  // ===========================
-  // 🎯 PUBLIC API METHODS
-  // ===========================
-
-  /**
-   * Combined search - get both address suggestions and property data
-   */
-  async searchAddressAndProperty(input) {
-    try {
-      // Get address suggestions first
-      const suggestions = await this.getAddressSuggestions(input);
-      
-      // If input looks like a complete address, also try to get property data
-      let propertyData = null;
-      if (input.length > 10 && input.includes(',')) {
-        try {
-          propertyData = await this.getPropertyData(input);
-        } catch (error) {
-          console.log('⚠️ Property data not available for this address');
-        }
-      }
-
-      return {
-        suggestions: suggestions,
-        propertyData: propertyData,
-        success: true
-      };
-      
-    } catch (error) {
-      console.error('❌ Combined search error:', error.message);
-      return {
-        suggestions: [],
-        propertyData: null,
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  // ===========================
-  // 📊 ANALYTICS AND REPORTING
-  // ===========================
-
-  /**
-   * Log API usage statistics
-   */
-  async logAPIUsage(source, success, responseTime) {
-    try {
-      // In production, you might want to store this in a database
-      console.log(`📊 API Usage: ${source} | Success: ${success} | Response Time: ${responseTime}ms`);
-      
-      // Could integrate with analytics services like Google Analytics, Mixpanel, etc.
-      if (typeof gtag !== 'undefined') {
-        gtag('event', 'api_call', {
-          'custom_parameter': source,
-          'value': success ? 1 : 0
-        });
-      }
-      
-    } catch (error) {
-      console.error('❌ Analytics logging error:', error.message);
-    }
-  }
 
   /**
    * Get API health status
@@ -480,116 +456,35 @@ class PropertyDataService {
       services: {}
     };
 
-    // Test each API service
-    const services = [
-      { name: 'datafiniti', test: () => this.testDatafinitiConnection() },
-      { name: 'zillow', test: () => this.testZillowConnection() },
-      { name: 'google_places', test: () => this.testGooglePlacesConnection() }
-    ];
+    // Test Google Places API
+    healthStatus.services.google_places = {
+      status: process.env.GOOGLE_PLACES_API_KEY ? 'configured' : 'not_configured',
+      purpose: 'Address autocomplete suggestions',
+      endpoint: 'Google Places API'
+    };
 
-    for (const service of services) {
-      try {
-        const startTime = Date.now();
-        await service.test();
-        const responseTime = Date.now() - startTime;
-        
-        healthStatus.services[service.name] = {
-          status: 'healthy',
-          responseTime: `${responseTime}ms`,
-          lastChecked: new Date().toISOString()
-        };
-      } catch (error) {
-        healthStatus.services[service.name] = {
-          status: 'unhealthy',
-          error: error.message,
-          lastChecked: new Date().toISOString()
-        };
-      }
-    }
+    // Test Datafiniti API
+    healthStatus.services.datafiniti = {
+      status: process.env.DATAFINITI_API_KEY ? 'configured' : 'not_configured',
+      purpose: 'Property details and building information',
+      endpoint: 'Datafiniti Property API'
+    };
+
+    // Test RentCast API
+    healthStatus.services.rentcast = {
+      status: process.env.RENTCAST_API_KEY ? 'configured' : 'not_configured',
+      purpose: 'Alternative property data source',
+      endpoint: 'RentCast API'
+    };
+
+    // Test Zillow API
+    healthStatus.services.zillow = {
+      status: process.env.RAPIDAPI_KEY ? 'configured' : 'not_configured',
+      purpose: 'Alternative property data via RapidAPI',
+      endpoint: 'Zillow via RapidAPI'
+    };
 
     return healthStatus;
-  }
-
-  /**
-   * Test API connections
-   */
-  async testDatafinitiConnection() {
-    if (!process.env.DATAFINITI_API_KEY) {
-      throw new Error('API key not configured');
-    }
-    // Simple test - just check if we can hit the endpoint
-    console.log('🧪 Testing Datafiniti connection...');
-    return true; // In production, make actual test call
-  }
-
-  async testZillowConnection() {
-    if (!process.env.RAPIDAPI_KEY) {
-      throw new Error('RapidAPI key not configured');
-    }
-    console.log('🧪 Testing Zillow connection...');
-    return true; // In production, make actual test call
-  }
-
-  async testGooglePlacesConnection() {
-    if (!process.env.GOOGLE_PLACES_API_KEY) {
-      throw new Error('Google Places API key not configured');
-    }
-    console.log('🧪 Testing Google Places connection...');
-    return true; // In production, make actual test call
-  }
-
-  // ===========================
-  // 💾 CACHING METHODS
-  // ===========================
-
-  /**
-   * Cache property data to avoid repeated API calls
-   */
-  async cachePropertyData(address, data) {
-    try {
-      // In production, use Redis or similar caching solution
-      const cacheKey = `property_${address.replace(/\s+/g, '_').toLowerCase()}`;
-      const cacheData = {
-        data: data,
-        timestamp: Date.now(),
-        ttl: 24 * 60 * 60 * 1000 // 24 hours
-      };
-
-      // For now, just log that we would cache this
-      console.log(`💾 Caching property data for: ${address}`);
-      
-      // In production:
-      // await redis.setex(cacheKey, 86400, JSON.stringify(cacheData));
-      
-    } catch (error) {
-      console.error('❌ Caching error:', error.message);
-    }
-  }
-
-  /**
-   * Get cached property data
-   */
-  async getCachedPropertyData(address) {
-    try {
-      const cacheKey = `property_${address.replace(/\s+/g, '_').toLowerCase()}`;
-      
-      // In production:
-      // const cached = await redis.get(cacheKey);
-      // if (cached) {
-      //   const cacheData = JSON.parse(cached);
-      //   if (Date.now() - cacheData.timestamp < cacheData.ttl) {
-      //     console.log(`💾 Using cached data for: ${address}`);
-      //     return cacheData.data;
-      //   }
-      // }
-      
-      console.log(`💾 No cached data found for: ${address}`);
-      return null;
-      
-    } catch (error) {
-      console.error('❌ Cache retrieval error:', error.message);
-      return null;
-    }
   }
 }
 
