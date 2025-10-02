@@ -400,6 +400,13 @@ app.get('/api/property/health', async (req, res) => {
 });
 
 // ===========================
+// 📄 DOCUMENT PARSING ROUTES
+// ===========================
+const documentRoutes = require('./src/routes/document');
+app.use('/api/document', documentRoutes);
+
+
+// ===========================
 // 📚 API DOCUMENTATION
 // ===========================
 app.get('/api/docs', (req, res) => {
