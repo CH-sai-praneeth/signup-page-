@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 const SmartClaimsPage = ({ backendUrl }) => {
-  // Use passed backendUrl or fallback to environment variable or production URL
   const BACKEND_URL = backendUrl || process.env.REACT_APP_BACKEND_URL || 'https://signup-page-b4tb.onrender.com';
   
-  // Authentication state
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Form state
   const [address, setAddress] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState([]);
   const [propertyDetails, setPropertyDetails] = useState({
@@ -28,11 +25,9 @@ const SmartClaimsPage = ({ backendUrl }) => {
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
-  // Check authentication on component mount
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Check URL for token (from OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         
@@ -40,7 +35,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           localStorage.setItem('authToken', token);
         }
         
-        // Check for existing token
         const authToken = localStorage.getItem('authToken');
         if (authToken) {
           const response = await fetch(`${BACKEND_URL}/auth/profile`, {
@@ -54,16 +48,13 @@ const SmartClaimsPage = ({ backendUrl }) => {
             const userData = await response.json();
             setUser(userData.user);
             setIsAuthenticated(true);
-            // Clean up URL after successful authentication
             window.history.replaceState({}, document.title, window.location.pathname);
           } else {
-            // Invalid token
             localStorage.removeItem('authToken');
             redirectToLogin();
             return;
           }
         } else {
-          // No token
           redirectToLogin();
           return;
         }
@@ -84,7 +75,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     window.location.href = window.location.origin;
   };
 
-  // Logout function
   const handleLogout = async () => {
     try {
       const authToken = localStorage.getItem('authToken');
@@ -107,7 +97,68 @@ const SmartClaimsPage = ({ backendUrl }) => {
     }
   };
 
-  // Address autocomplete with backend API
+  // NEW: PDF Upload Handler
+  const handlePDFUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      alert('Please upload a PDF file');
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('File too large. Maximum size is 10MB');
+      return;
+    }
+
+    try {
+      setIsLoadingProperty(true);
+      setError('');
+
+      const formData = new FormData();
+      formData.append('document', file);
+
+      const authToken = localStorage.getItem('authToken');
+      const response = await fetch(`${BACKEND_URL}/api/document/parse-pdf`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('PDF parsed:', result.data);
+        
+        setPropertyDetails(prev => ({
+          ...prev,
+          ...result.data
+        }));
+
+        if (result.data.address) {
+          setAddress(result.data.address);
+        }
+
+        const fieldsFound = result.metadata.fieldsFound;
+        alert(`PDF processed successfully!\n\nExtracted ${fieldsFound} out of 9 fields.\n\nPlease review and fill any missing information.`);
+      } else {
+        throw new Error(result.message || 'Failed to parse PDF');
+      }
+
+    } catch (error) {
+      console.error('PDF upload error:', error);
+      setError('Failed to parse PDF. Please try again or enter information manually.');
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsLoadingProperty(false);
+      e.target.value = '';
+    }
+  };
+
   const handleAddressChange = async (e) => {
     const value = e.target.value;
     setAddress(value);
@@ -126,7 +177,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           const data = await response.json();
           setAddressSuggestions(data.suggestions || []);
         } else {
-          // Fallback to mock suggestions
           const mockSuggestions = [
             `${value} Street, City, State`,
             `${value} Avenue, City, State`, 
@@ -138,7 +188,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
         }
       } catch (error) {
         console.error('Error fetching address suggestions:', error);
-        // Fallback to mock suggestions
         const mockSuggestions = [
           `${value} Street, City, State`,
           `${value} Avenue, City, State`, 
@@ -151,11 +200,13 @@ const SmartClaimsPage = ({ backendUrl }) => {
     }
   };
 
-  // Property data fetching with backend API
+  // COMMENTED OUT: Datafiniti API integration (keeping Google Maps address suggestions)
   const fetchPropertyData = async (selectedAddress) => {
     setIsLoadingProperty(true);
     
     try {
+      // COMMENTED OUT: Datafiniti API call
+      /*
       const authToken = localStorage.getItem('authToken');
       const response = await fetch(`${BACKEND_URL}/api/property/search`, {
         method: 'POST',
@@ -174,17 +225,16 @@ const SmartClaimsPage = ({ backendUrl }) => {
             ...prev,
             ...result.data
           }));
-          console.log('✅ Property data loaded from API:', result.data);
+          console.log('Property data loaded from API:', result.data);
         } else {
           throw new Error('No property data found');
         }
       } else {
         throw new Error('API request failed');
       }
-    } catch (error) {
-      console.error('Error fetching property data:', error);
+      */
       
-      // Fallback to mock data
+      // Fallback to mock data for testing
       const mockPropertyData = {
         yearBuilt: Math.floor(Math.random() * (2023 - 1950) + 1950).toString(),
         squareFeet: Math.floor(Math.random() * (4000 - 1000) + 1000).toString(),
@@ -201,7 +251,9 @@ const SmartClaimsPage = ({ backendUrl }) => {
         ...mockPropertyData
       }));
       
-      console.log('⚠️ Using fallback mock data:', mockPropertyData);
+      console.log('Using mock data:', mockPropertyData);
+    } catch (error) {
+      console.error('Error fetching property data:', error);
     } finally {
       setIsLoadingProperty(false);
     }
@@ -279,7 +331,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
         const result = await response.json();
         alert(`Claim submitted successfully!\nClaim ID: ${result.claimId}\nEstimated processing time: ${result.estimatedProcessingTime}\n\nNext steps:\n${result.nextSteps?.join('\n') || 'Check your email for updates'}`);
         
-        // Reset form
         setAddress('');
         setPropertyDetails({
           yearBuilt: '',
@@ -305,7 +356,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     }
   };
 
-  // Show loading screen
   if (isLoading) {
     return (
       <div style={{
@@ -327,7 +377,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <div style={{
@@ -361,7 +410,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     );
   }
 
-  // Show main claims page if authenticated
   if (!isAuthenticated) {
     return null;
   }
@@ -375,7 +423,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* Header with User Info and Logout */}
         <div style={{
           textAlign: 'center',
           marginBottom: '40px',
@@ -385,7 +432,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           position: 'relative'
         }}>
-          {/* User Profile and Logout */}
           <div style={{
             position: 'absolute',
             top: '20px',
@@ -449,7 +495,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             Get strategic estimates and increase payouts 15-30% on average
           </p>
           
-          {/* Connection Status */}
           <div style={{
             position: 'absolute',
             top: '20px',
@@ -465,7 +510,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           </div>
         </div>
 
-        {/* Property Information */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -484,7 +528,54 @@ const SmartClaimsPage = ({ backendUrl }) => {
             {isLoadingProperty && <span style={{marginLeft: '12px', fontSize: '16px', color: '#3182ce'}}>Loading property data...</span>}
           </h2>
 
-          {/* Address Input */}
+          {/* NEW: PDF Upload Section */}
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '2px dashed #3b82f6',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '25px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>📄</div>
+            <h3 style={{ margin: '0 0 8px', color: '#1e40af', fontSize: '18px', fontWeight: '600' }}>
+              Upload Property Document
+            </h3>
+            <p style={{ margin: '0 0 15px', fontSize: '14px', color: '#4b5563' }}>
+              Upload insurance declaration, tax assessment, or appraisal (PDF only)
+            </p>
+            
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handlePDFUpload}
+              style={{ display: 'none' }}
+              id="pdf-upload"
+              disabled={isLoadingProperty}
+            />
+            
+            <label
+              htmlFor="pdf-upload"
+              style={{
+                display: 'inline-block',
+                backgroundColor: isLoadingProperty ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                padding: '12px 32px',
+                borderRadius: '8px',
+                cursor: isLoadingProperty ? 'not-allowed' : 'pointer',
+                fontWeight: '600',
+                fontSize: '15px',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isLoadingProperty ? '⏳ Processing...' : '📤 Upload PDF'}
+            </label>
+            
+            <div style={{ marginTop: '12px', fontSize: '12px', color: '#6b7280' }}>
+              PDF only • Max 10MB • Free pattern matching
+            </div>
+          </div>
+
           <div style={{ marginBottom: '25px', position: 'relative' }}>
             <label style={{
               display: 'block',
@@ -510,7 +601,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
               }}
             />
             
-            {/* Address Suggestions */}
             {addressSuggestions.length > 0 && (
               <div style={{
                 position: 'absolute',
@@ -544,7 +634,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             )}
           </div>
 
-          {/* Property Details Grid */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(3, 1fr)',
@@ -804,7 +893,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             </div>
           </div>
 
-          {/* API Status Indicator */}
           {isLoadingProperty && (
             <div style={{
               marginTop: '20px',
@@ -814,12 +902,11 @@ const SmartClaimsPage = ({ backendUrl }) => {
               borderRadius: '8px',
               color: '#234e52'
             }}>
-              🔍 Fetching property data from external databases...
+              🔍 Processing document...
             </div>
           )}
         </div>
 
-        {/* Photo Upload */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -837,7 +924,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             📸 Upload Damage Photos
           </h2>
 
-          {/* Drag and Drop Area */}
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -881,7 +967,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             style={{ display: 'none' }}
           />
 
-          {/* Photo Guidelines */}
           <div style={{
             backgroundColor: '#f0f9ff',
             border: '1px solid #bae6fd',
@@ -902,7 +987,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
             </div>
           </div>
 
-          {/* Uploaded Photos */}
           {uploadedPhotos.length > 0 && (
             <div>
               <h4 style={{
@@ -975,7 +1059,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           )}
         </div>
 
-        {/* Submit Button */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -1029,7 +1112,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           </p>
         </div>
 
-        {/* Footer Info */}
         <div style={{
           textAlign: 'center',
           marginTop: '40px',
