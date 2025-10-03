@@ -262,7 +262,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
   const selectAddress = (selectedAddress) => {
     setAddress(selectedAddress);
     setAddressSuggestions([]);
-    fetchPropertyData(selectedAddress);
+    //fetchPropertyData(selectedAddress);
   };
 
   const handlePropertyChange = (field, value) => {
