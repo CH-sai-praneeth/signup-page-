@@ -432,102 +432,90 @@ const SmartClaimsPage = ({ backendUrl }) => {
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           position: 'relative'
         }}>
-          <div style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '15px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <img
-                src={user?.avatar || 'https://via.placeholder.com/32'}
-                alt="Profile"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%'
-                }}
-              />
-              <span style={{
-                fontSize: '14px',
-                color: '#4a5568',
-                fontWeight: '500'
-              }}>
-                {user?.name}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                backgroundColor: '#e53e3e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '8px 16px',
-                fontSize: '14px',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              Logout
-            </button>
-          </div>
-
-          <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏠💡</div>
-          <h1 style={{
-            fontSize: '36px',
-            color: '#1a202c',
-            margin: '0 0 12px',
-            fontWeight: 'bold'
-          }}>
-            Smart Claims AI
-          </h1>
-          <p style={{ fontSize: '20px', color: '#4a5568', margin: '0', fontWeight: '500' }}>
-            Maximize Your Insurance Claim Payouts with AI
-          </p>
-          <p style={{ fontSize: '16px', color: '#718096', margin: '8px 0 0' }}>
-            Get strategic estimates and increase payouts 15-30% on average
-          </p>
-          
+          {/* Left side - Profile */}
           <div style={{
             position: 'absolute',
             top: '20px',
             left: '20px',
-            fontSize: '12px',
-            color: '#10b981',
             display: 'flex',
             alignItems: 'center',
-            gap: '5px'
+            gap: '10px'
           }}>
-            <span style={{ color: '#10b981' }}>●</span>
-            Connected to API
-        </div>
-          {/* Payment Button - NEW */}
-        <button
-          onClick={() => alert('Payment integration coming soon! Complete PayPal setup first.')}
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '180px',
-            backgroundColor: '#0070ba',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '8px 16px',
+            <img
+              src={user?.avatar || 'https://via.placeholder.com/32'}
+              alt="Profile"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%'
+            }}
+          />
+          <span style={{
             fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: '500',
-          }}
-        >
-         Pay Now 
-        </button>
+            color: '#4a5568',
+            fontWeight: '500'
+          }}>
+            {user?.name}
+          </span>
         </div>
+        {/* Right side - Payment + Logout */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <button
+            onClick={() => alert('Payment integration coming soon! Complete PayPal setup first.')}
+            style={{
+              backgroundColor: '#0070ba',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            💳 Pay Now
+          </button>
+    
+          <button
+            onClick={handleLogout}
+            style={{
+              backgroundColor: '#e53e3e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Logout
+          </button>
+        </div>
+
+        <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏠💡</div>
+        <h1 style={{
+          fontSize: '36px',
+          color: '#1a202c',
+          margin: '0 0 12px',
+          fontWeight: 'bold'
+        }}>
+          Smart Claims AI
+        </h1>
+        <p style={{ fontSize: '20px', color: '#4a5568', margin: '0', fontWeight: '500' }}>
+          Maximize Your Insurance Claim Payouts with AI
+        </p>
+        <p style={{ fontSize: '16px', color: '#718096', margin: '8px 0 0' }}>
+          Get strategic estimates and increase payouts 15-30% on average
+        </p>
+      </div>
 
         <div style={{
           backgroundColor: 'white',
