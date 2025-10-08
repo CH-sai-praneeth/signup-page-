@@ -5,7 +5,7 @@ class PaymentController {
   // Create PayPal order
   async createPayment(req, res) {
     try {
-      const { amount, claimId } = req.body;
+      const { amount, claimId, returnToken } = req.body;
 
       // Validate amount
       if (!amount || amount <= 0) {
@@ -21,7 +21,8 @@ class PaymentController {
       const order = await paypalService.createOrder(
         amount,
         'USD',
-        `Smart Claims AI - Claim #${claimId || 'New'}`
+        `Smart Claims AI - Claim #${claimId || 'New'}`,
+        returnToken 
       );
 
       // Find approval URL

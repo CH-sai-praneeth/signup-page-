@@ -29,7 +29,7 @@ class PayPalService {
   }
 
   // Create a PayPal order
-  async createOrder(amount, currency = 'USD', description = 'Smart Claims AI - Insurance Claim Analysis') {
+  async createOrder(amount, currency = 'USD', description = 'Smart Claims AI - Insurance Claim Analysis', returnToken = '') {
     try {
       if (!this.client) {
         throw new Error('PayPal client not initialized');
@@ -50,8 +50,8 @@ class PayPalService {
           brand_name: 'Smart Claims AI',
           landing_page: 'NO_PREFERENCE',
           user_action: 'PAY_NOW',
-          return_url: `https://my-oauth-frontend.vercel.app/claims?payment=success`,
-          cancel_url: `https://my-oauth-frontend.vercel.app/claims?payment=cancelled`
+          return_url: `https://my-oauth-frontend.vercel.app/claims?payment=success&token=${returnToken}`,
+          cancel_url: `https://my-oauth-frontend.vercel.app/claims?payment=cancelled&token=${returnToken}`
         }
       });
 
