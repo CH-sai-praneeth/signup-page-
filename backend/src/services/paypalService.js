@@ -50,8 +50,8 @@ class PayPalService {
           brand_name: 'Smart Claims AI',
           landing_page: 'NO_PREFERENCE',
           user_action: 'PAY_NOW',
-          return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success`,
-          cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-cancelled`
+          return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?payment=success`,
+          cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/claims?payment=cancelled`
         }
       });
 
