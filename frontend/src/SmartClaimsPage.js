@@ -468,7 +468,32 @@ const SmartClaimsPage = ({ backendUrl }) => {
           gap: '10px'
         }}>
           <button
-            onClick={() => alert('Payment integration coming soon! Complete PayPal setup first.')}
+            onClick={async () => {
+              try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${BACKEND_URL}/api/payment/create-order`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    amount: 50.00,
+                    claimId: 'test-123'
+                  })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                // Redirect to PayPal
+                  window.location.href = result.approvalUrl;
+                } else {
+                  alert('Payment failed: ' + result.message);
+                }
+              } catch (error) {
+                alert('Payment error: ' + error.message);
+              }
+            }}
             style={{
               backgroundColor: '#0070ba',
               color: 'white',
