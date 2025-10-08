@@ -399,11 +399,13 @@ app.get('/api/property/health', async (req, res) => {
   }
 });
 
-// ===========================
-// 📄 DOCUMENT PARSING ROUTES
-// ===========================
+// =====================================
+// 📄 DOCUMENT PARSING ROUTES & Payment
+// =====================================
 const documentRoutes = require('./src/routes/document');
+const paymentRoutes = require('./src/routes/payment'); 
 app.use('/api/document', documentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 
 // ===========================
