@@ -29,10 +29,10 @@ const SmartClaimsPage = ({ backendUrl }) => {
     const initializeAuth = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        const urltoken = urlParams.get('token');
         
-        if (token) {
-          localStorage.setItem('authToken', token);
+        if (urltoken) {
+          localStorage.setItem('authToken', urltoken);
         }
         
         const authToken = localStorage.getItem('authToken');
@@ -478,7 +478,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                    amount: 50.00,
+                    amount: 29.99,
                     claimId: 'test-123'
                   })
                 });
