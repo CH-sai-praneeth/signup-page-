@@ -507,7 +507,26 @@ const SmartClaimsPage = ({ backendUrl }) => {
           }}>
             <span style={{ color: '#10b981' }}>●</span>
             Connected to API
-          </div>
+        </div>
+          {/* Payment Button - NEW */}
+        <button
+          onClick={() => alert('Payment integration coming soon! Complete PayPal setup first.')}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '180px',
+            backgroundColor: '#0070ba',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '500',
+          }}
+        >
+         Pay Now 
+        </button>
         </div>
 
         <div style={{
