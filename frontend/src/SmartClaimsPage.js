@@ -24,17 +24,35 @@ const SmartClaimsPage = ({ backendUrl }) => {
   const [isLoadingProperty, setIsLoadingProperty] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
 
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const urltoken = urlParams.get('token');
-        
-        if (urltoken) {
-          localStorage.setItem('authToken', urltoken);
+        const urlToken = urlParams.get('token');
+        const paymentResult = urlParams.get('payment');
+
+      // Handle payment status popup
+        if (paymentResult) {
+          if (paymentResult === 'success') {
+            setPaymentStatus('success');
+          } else if (paymentResult === 'cancelled') {
+            setPaymentStatus('failed');
+          }
+
+        // Auto-hide popup after 4 seconds
+          setTimeout(() => {
+            setPaymentStatus(null);
+          // Clean URL
+            window.history.replaceState({}, document.title, '/claims');
+          }, 4000);
         }
-        
+
+        if (urlToken) {
+          localStorage.setItem('authToken', urlToken);
+        }
+      
         const authToken = localStorage.getItem('authToken');
         if (authToken) {
           const response = await fetch(`${BACKEND_URL}/auth/profile`, {
@@ -43,7 +61,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
               'Content-Type': 'application/json'
             }
           });
-          
+        
           if (response.ok) {
             const userData = await response.json();
             setUser(userData.user);
@@ -1158,6 +1176,85 @@ const SmartClaimsPage = ({ backendUrl }) => {
           </p>
         </div>
       </div>
+          {/* Payment Status Popup */}
+      {paymentStatus && (
+        <>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <div style={{
+              backgroundColor: paymentStatus === 'success' ? '#10b981' : '#ef4444',
+              borderRadius: '24px',
+              padding: '40px 50px',
+              textAlign: 'center',
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+              animation: 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              maxWidth: '350px',
+              width: '90%'
+            }}>
+              <div style={{
+                fontSize: '80px',
+                marginBottom: '20px',
+                animation: 'bounceIn 0.6s ease-out',
+                color: 'white'
+              }}>
+                {paymentStatus === 'success' ? '✓' : '✕'}
+              </div>
+
+              <h2 style={{
+                color: 'white',
+                fontSize: '28px',
+                fontWeight: 'bold',
+                margin: '0'
+              }}>
+                {paymentStatus === 'success' ? 'Payment Successful!' : 'Payment Failed'}
+              </h2>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            
+            @keyframes scaleIn {
+              from {
+                opacity: 0;
+                transform: scale(0.8);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+            
+            @keyframes bounceIn {
+              0% {
+                opacity: 0;
+                transform: scale(0);
+              }
+              50% {
+                transform: scale(1.2);
+              }
+              100% {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+          `}</style>
+        </>
+      )}
     </div>
   );
 };
