@@ -1,5 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import SmartClaimsPage from './SmartClaimsPage';
+
+// 🆕 NEW: Simple Payment Status Line Component
+const PaymentStatusLine = () => {
+  const [status, setStatus] = useState(null);
+
+  useEffect(() => {
+    // Check URL parameters for payment status
+    const urlParams = new URLSearchParams(window.location.search);
+    const payment = urlParams.get('payment');
+    
+    if (payment) {
+      setStatus(payment);
+      // Save to sessionStorage so it persists during the session
+      sessionStorage.setItem('paymentStatus', payment);
+    } else {
+      // Check if we have a saved status
+      const saved = sessionStorage.getItem('paymentStatus');
+      if (saved) setStatus(saved);
+    }
+  }, []);
+
+  // Don't show anything if no payment status
+  if (!status) return null;
+
+  // Check if payment was successful (approved, success, completed)
+  const isSuccess = ['approved', 'success', 'completed'].includes(status.toLowerCase());
+  // Check if payment was cancelled/failed
+  const isCancelled = ['cancelled', 'canceled', 'failed'].includes(status.toLowerCase());
+
+  // Don't show if status is unrecognized
+  if (!isSuccess && !isCancelled) return null;
+
+  return (
+    <div style={{
+      padding: '12px 20px',
+      backgroundColor: isSuccess ? '#ecfdf5' : '#fef2f2',
+      borderBottom: `1px solid ${isSuccess ? '#a7f3d0' : '#fecaca'}`,
+      textAlign: 'center',
+      fontSize: '14px',
+      color: isSuccess ? '#065f46' : '#991b1b',
+      fontWeight: 500,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '10px'
+    }}>
+      <span>
+        {isSuccess ? '✓' : '✕'} Payment {isSuccess ? 'Successful' : isCancelled ? 'Cancelled' : 'Failed'}
+      </span>
+      
+      <button
+        onClick={() => {
+          setStatus(null);
+          sessionStorage.removeItem('paymentStatus');
+          // Also clean the URL
+          const url = new URL(window.location);
+          url.searchParams.delete('payment');
+          window.history.replaceState({}, '', url);
+        }}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'inherit',
+          cursor: 'pointer',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          padding: '0 5px',
+          lineHeight: 1
+        }}
+        title="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
 
 function App() {
   // Get backend URL from environment or use production default
@@ -24,7 +100,15 @@ function App() {
       console.log('✅ Token saved to localStorage');
     }
     
-    return <SmartClaimsPage backendUrl={BACKEND_URL} />;
+    return (
+      <div>
+        {/* 🆕 NEW: Payment Status Line - Shows after payment */}
+        <PaymentStatusLine />
+        
+        {/* Your existing SmartClaimsPage */}
+        <SmartClaimsPage backendUrl={BACKEND_URL} />
+      </div>
+    );
   }
 
   // Login page
