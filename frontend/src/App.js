@@ -10,7 +10,10 @@ const PaymentStatusLine = () => {
     // Check URL parameters for payment status
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
-    const token = urlParams.get('token'); // PayPal order ID
+    
+    // Get all token parameters and use the one that's not empty
+    const allTokens = urlParams.getAll('token');
+    const token = allTokens.find(t => t && t.trim() !== '') || null;
     
     if (payment) {
       setStatus(payment);
@@ -60,7 +63,7 @@ const PaymentStatusLine = () => {
             #{orderId.slice(-8).toUpperCase()}
           </span>
         )}
-        {isSuccess && ' - Your AI analysis report will be ready in 2-3 minutes'}
+        {isSuccess}
       </span>
       
       <button
