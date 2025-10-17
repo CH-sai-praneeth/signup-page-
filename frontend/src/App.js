@@ -63,7 +63,6 @@ const PaymentStatusLine = () => {
             #{orderId.slice(-8).toUpperCase()}
           </span>
         )}
-        {isSuccess}
       </span>
       
       <button
