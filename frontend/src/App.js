@@ -4,20 +4,27 @@ import SmartClaimsPage from './SmartClaimsPage';
 // 🆕 NEW: Simple Payment Status Line Component
 const PaymentStatusLine = () => {
   const [status, setStatus] = useState(null);
+  const [orderId, setOrderId] = useState(null);
 
   useEffect(() => {
     // Check URL parameters for payment status
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
+    const token = urlParams.get('token'); // PayPal order ID
     
     if (payment) {
       setStatus(payment);
+      if (token) setOrderId(token);
+      
       // Save to sessionStorage so it persists during the session
       sessionStorage.setItem('paymentStatus', payment);
+      if (token) sessionStorage.setItem('paymentOrderId', token);
     } else {
       // Check if we have a saved status
       const saved = sessionStorage.getItem('paymentStatus');
+      const savedOrderId = sessionStorage.getItem('paymentOrderId');
       if (saved) setStatus(saved);
+      if (savedOrderId) setOrderId(savedOrderId);
     }
   }, []);
 
@@ -48,12 +55,20 @@ const PaymentStatusLine = () => {
     }}>
       <span>
         {isSuccess ? '✓' : '✕'} Payment {isSuccess ? 'Successful' : isCancelled ? 'Cancelled' : 'Failed'}
+        {isSuccess && orderId && (
+          <span style={{ fontWeight: 'bold', marginLeft: '5px' }}>
+            #{orderId.slice(-8).toUpperCase()}
+          </span>
+        )}
+        {isSuccess && ' - Your AI analysis report will be ready in 2-3 minutes'}
       </span>
       
       <button
         onClick={() => {
           setStatus(null);
+          setOrderId(null);
           sessionStorage.removeItem('paymentStatus');
+          sessionStorage.removeItem('paymentOrderId');
           // Also clean the URL
           const url = new URL(window.location);
           url.searchParams.delete('payment');
