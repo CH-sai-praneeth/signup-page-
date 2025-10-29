@@ -3,9 +3,6 @@ import React, { useState, useRef, useEffect } from 'react';
 const SmartClaimsPage = ({ backendUrl }) => {
   const BACKEND_URL = backendUrl || process.env.REACT_APP_BACKEND_URL || 'https://signup-page-b4tb.onrender.com';
   
-  // 🆕 PAYMENT GATEWAY URL
-  const PAYMENT_GATEWAY_URL = process.env.REACT_APP_GATEWAY_URL || 'http://localhost:4000';
-  
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +88,67 @@ const SmartClaimsPage = ({ backendUrl }) => {
 
     initializeAuth();
   }, [BACKEND_URL]);
+
+  // ✅ NEW: PayPal Return Handler
+  useEffect(() => {
+    const handlePayPalReturn = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token'); // PayPal order token
+      const paymentParam = urlParams.get('payment');
+      
+      // If user returned from PayPal with a token
+      if (token && !paymentParam) {
+        try {
+          console.log('💳 PayPal return detected, capturing payment...');
+          
+          const authToken = localStorage.getItem('authToken');
+          const pendingOrderId = localStorage.getItem('pendingOrderId');
+          
+          // Call Payment Gateway to capture the payment
+          const PAYMENT_GATEWAY_URL = process.env.REACT_APP_PAYMENT_GATEWAY_URL || 'http://localhost:4000';
+          
+          const response = await fetch(`${PAYMENT_GATEWAY_URL}/api/v1/payment/capture-order`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orderId: pendingOrderId,
+              authToken: authToken,
+              claimId: 'claim-' + Date.now()
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Clear pending order
+            localStorage.removeItem('pendingOrderId');
+            
+            // Show success and redirect
+            setPaymentStatus('success');
+            
+            // Clean URL and redirect after 3 seconds
+            setTimeout(() => {
+              window.history.replaceState({}, document.title, '/claims?payment=success');
+              window.location.href = '/claims?payment=success';
+            }, 3000);
+          } else {
+            throw new Error(result.message);
+          }
+          
+        } catch (error) {
+          console.error('Payment capture failed:', error);
+          setPaymentStatus('failed');
+          setTimeout(() => {
+            window.location.href = '/claims?payment=cancelled';
+          }, 3000);
+        }
+      }
+    };
+    
+    handlePayPalReturn();
+  }, []);
 
   const redirectToLogin = () => {
     window.location.href = window.location.origin;
@@ -315,9 +373,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
     setUploadedPhotos(prev => prev.filter(photo => photo.id !== id));
   };
 
-  // 🆕 UPDATED: Submit claim and redirect to payment
   const handleSubmit = async () => {
-    // Validation
     if (!address.trim()) {
       alert('Please enter a property address');
       return;
@@ -340,7 +396,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     };
     
     try {
-      // Step 1: Submit claim to backend
       const authToken = localStorage.getItem('authToken');
       const response = await fetch(`${BACKEND_URL}/api/property/submit-claim`, {
         method: 'POST',
@@ -351,51 +406,32 @@ const SmartClaimsPage = ({ backendUrl }) => {
         body: JSON.stringify(claimData)
       });
       
-      if (!response.ok) {
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Claim submitted successfully!\nClaim ID: ${result.claimId}\nEstimated processing time: ${result.estimatedProcessingTime}\n\nNext steps:\n${result.nextSteps?.join('\n') || 'Check your email for updates'}`);
+        
+        setAddress('');
+        setPropertyDetails({
+          yearBuilt: '',
+          squareFeet: '',
+          stories: '1',
+          primaryMaterial: '',
+          roofType: '',
+          provider: '',
+          propertyType: '',
+          bedrooms: '',
+          bathrooms: ''
+        });
+        setUploadedPhotos([]);
+        
+      } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to submit claim');
       }
       
-      const result = await response.json();
-      const claimId = result.claimId;
-      
-      console.log('✅ Claim submitted successfully:', claimId);
-      
-      // Step 2: Create payment through PAYMENT GATEWAY
-      console.log('💳 Creating payment through gateway:', PAYMENT_GATEWAY_URL);
-      
-      const paymentResponse = await fetch(`${PAYMENT_GATEWAY_URL}/api/v1/payment/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': 'sk_smartclaim_live_2025' // API Key for gateway authentication
-        },
-        body: JSON.stringify({
-          amount: 99.00,
-          claimId: claimId,
-          returnToken: authToken // Pass token so user stays logged in after payment
-        })
-      });
-      
-      if (!paymentResponse.ok) {
-        const paymentError = await paymentResponse.json();
-        throw new Error(paymentError.message || 'Failed to create payment');
-      }
-      
-      const paymentData = await paymentResponse.json();
-      
-      if (paymentData.success && paymentData.approvalUrl) {
-        console.log('✅ Payment created successfully, redirecting to PayPal...');
-        
-        // Step 3: Redirect to PayPal for payment
-        window.location.href = paymentData.approvalUrl;
-      } else {
-        throw new Error('Payment approval URL not received');
-      }
-      
     } catch (error) {
-      console.error('❌ Error:', error);
-      alert(`Failed to process your request:\n\n${error.message}\n\nPlease try again or contact support if the problem persists.`);
+      console.error('Error submitting claim:', error);
+      alert(`Claim submission failed: ${error.message}\n\nPlease try again or contact support if the problem persists.`);
     }
   };
 
@@ -432,8 +468,9 @@ const SmartClaimsPage = ({ backendUrl }) => {
         padding: '20px'
       }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
-        <div style={{ color: '#e53e3e', fontSize: '18px', textAlign: 'center' }}>{error}</div>
-        <button 
+        <h2 style={{ color: '#e53e3e', marginBottom: '10px' }}>Authentication Error</h2>
+        <p style={{ color: '#4a5568', textAlign: 'center', maxWidth: '400px' }}>{error}</p>
+        <button
           onClick={redirectToLogin}
           style={{
             marginTop: '20px',
@@ -442,14 +479,18 @@ const SmartClaimsPage = ({ backendUrl }) => {
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            fontSize: '16px',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontSize: '16px'
           }}
         >
-          Return to Login
+          Back to Login
         </button>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -461,7 +502,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
     }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* Header with User Info */}
         <div style={{
           textAlign: 'center',
           marginBottom: '40px',
@@ -471,144 +511,116 @@ const SmartClaimsPage = ({ backendUrl }) => {
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           position: 'relative'
         }}>
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              padding: '10px 20px',
-              backgroundColor: '#e53e3e',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#c53030'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#e53e3e'}
-          >
-            🚪 Logout
-          </button>
-
-          {/* User Welcome */}
-          {user && (
-            <div style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              textAlign: 'left'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {user.avatar && (
-                  <img 
-                    src={user.avatar} 
-                    alt="User" 
-                    style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%',
-                      border: '2px solid #667eea'
-                    }} 
-                  />
-                )}
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#2d3748' }}>
-                    {user.name}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#718096' }}>
-                    {user.email}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏠 💡</div>
-          <h1 style={{
-            fontSize: '36px',
-            color: '#1a202c',
-            margin: '0 0 12px',
-            fontWeight: 'bold'
-          }}>
-            Smart Claims AI
-          </h1>
-          <p style={{ fontSize: '20px', color: '#4a5568', margin: '0', fontWeight: '500' }}>
-            Maximize Your Insurance Claim Payouts with AI
-          </p>
-          <p style={{ fontSize: '16px', color: '#718096', margin: '8px 0 0' }}>
-            Get strategic estimates and increase payouts 15-30% on average
-          </p>
-        </div>
-
-        {/* PDF Upload Section */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '30px',
-          marginBottom: '30px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            color: '#2d3748',
-            margin: '0 0 20px',
+          {/* Left side - Profile */}
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px'
           }}>
-            📄 Upload Insurance Document (Optional)
-          </h2>
-          
-          <div style={{
-            border: '2px dashed #cbd5e0',
-            borderRadius: '12px',
-            padding: '40px 20px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            backgroundColor: '#f7fafc',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.borderColor = '#667eea';
-            e.currentTarget.style.backgroundColor = '#edf2f7';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.borderColor = '#cbd5e0';
-            e.currentTarget.style.backgroundColor = '#f7fafc';
-          }}
-          onClick={() => document.getElementById('pdfUploadInput').click()}
-          >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📑</div>
-            <p style={{
-              fontSize: '18px',
-              color: '#4a5568',
-              margin: '0 0 8px',
-              fontWeight: '600'
-            }}>
-              Click to Upload Insurance PDF
-            </p>
-            <p style={{
-              fontSize: '14px',
-              color: '#718096',
-              margin: '0'
-            }}>
-              We'll automatically extract property details
-            </p>
-          </div>
-
-          <input
-            id="pdfUploadInput"
-            type="file"
-            accept="application/pdf"
-            onChange={handlePDFUpload}
-            style={{ display: 'none' }}
+            <img
+              src={user?.avatar || 'https://via.placeholder.com/32'}
+              alt="Profile"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%'
+            }}
           />
+          <span style={{
+            fontSize: '14px',
+            color: '#4a5568',
+            fontWeight: '500'
+          }}>
+            {user?.name}
+          </span>
+        </div>
+        {/* Right side - Payment + Logout */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <button
+            onClick={async () => {
+              try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`${BACKEND_URL}/api/payment/create-order`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    amount: 29.99,
+                    claimId: 'test-123'
+                  })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                // Redirect to PayPal
+                  window.location.href = result.approvalUrl;
+                } else {
+                  alert('Payment failed: ' + result.message);
+                }
+              } catch (error) {
+                alert('Payment error: ' + error.message);
+              }
+            }}
+            style={{
+              backgroundColor: '#0070ba',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            💳 Pay Now
+          </button>
+    
+          <button
+            onClick={handleLogout}
+            style={{
+              backgroundColor: '#e53e3e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Logout
+          </button>
         </div>
 
-        {/* Property Information */}
+        <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏠💡</div>
+        <h1 style={{
+          fontSize: '36px',
+          color: '#1a202c',
+          margin: '0 0 12px',
+          fontWeight: 'bold'
+        }}>
+          Smart Claims AI
+        </h1>
+        <p style={{ fontSize: '20px', color: '#4a5568', margin: '0', fontWeight: '500' }}>
+          Maximize Your Insurance Claim Payouts with AI
+        </p>
+        <p style={{ fontSize: '16px', color: '#718096', margin: '8px 0 0' }}>
+          Get strategic estimates and increase payouts 15-30% on average
+        </p>
+      </div>
+
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -624,10 +636,57 @@ const SmartClaimsPage = ({ backendUrl }) => {
             alignItems: 'center'
           }}>
             🏠 Property Information
-            {isLoadingProperty && <span style={{marginLeft: '12px', fontSize: '16px', color: '#3182ce'}}>Loading...</span>}
+            {isLoadingProperty && <span style={{marginLeft: '12px', fontSize: '16px', color: '#3182ce'}}>Loading property data...</span>}
           </h2>
 
-          {/* Address Input */}
+          {/* NEW: PDF Upload Section */}
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '2px dashed #3b82f6',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '25px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>📄</div>
+            <h3 style={{ margin: '0 0 8px', color: '#1e40af', fontSize: '18px', fontWeight: '600' }}>
+              Upload Property Document
+            </h3>
+            <p style={{ margin: '0 0 15px', fontSize: '14px', color: '#4b5563' }}>
+              Upload insurance declaration, tax assessment, or appraisal (PDF only)
+            </p>
+            
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handlePDFUpload}
+              style={{ display: 'none' }}
+              id="pdf-upload"
+              disabled={isLoadingProperty}
+            />
+            
+            <label
+              htmlFor="pdf-upload"
+              style={{
+                display: 'inline-block',
+                backgroundColor: isLoadingProperty ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                padding: '12px 32px',
+                borderRadius: '8px',
+                cursor: isLoadingProperty ? 'not-allowed' : 'pointer',
+                fontWeight: '600',
+                fontSize: '15px',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isLoadingProperty ? '⏳ Processing...' : '📤 Upload PDF'}
+            </label>
+            
+            <div style={{ marginTop: '12px', fontSize: '12px', color: '#6b7280' }}>
+              PDF only • Max 10MB • Free pattern matching
+            </div>
+          </div>
+
           <div style={{ marginBottom: '25px', position: 'relative' }}>
             <label style={{
               display: 'block',
@@ -636,7 +695,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
               color: '#4a5568',
               marginBottom: '8px'
             }}>
-              Property Address *
+              Property Address
             </label>
             <input
               type="text"
@@ -653,7 +712,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
               }}
             />
             
-            {/* Address Suggestions */}
             {addressSuggestions.length > 0 && (
               <div style={{
                 position: 'absolute',
@@ -687,10 +745,9 @@ const SmartClaimsPage = ({ backendUrl }) => {
             )}
           </div>
 
-          {/* Property Details Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(2, 1fr)',
+            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(3, 1fr)',
             gap: '20px'
           }}>
             <div>
@@ -946,9 +1003,21 @@ const SmartClaimsPage = ({ backendUrl }) => {
               </select>
             </div>
           </div>
+
+          {isLoadingProperty && (
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              backgroundColor: '#e6fffa',
+              border: '1px solid #81e6d9',
+              borderRadius: '8px',
+              color: '#234e52'
+            }}>
+              🔍 Processing document...
+            </div>
+          )}
         </div>
 
-        {/* Photo Upload */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -963,10 +1032,9 @@ const SmartClaimsPage = ({ backendUrl }) => {
             display: 'flex',
             alignItems: 'center'
           }}>
-            📸 Upload Damage Photos *
+            📸 Upload Damage Photos
           </h2>
 
-          {/* Drag and Drop Area */}
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
@@ -981,16 +1049,8 @@ const SmartClaimsPage = ({ backendUrl }) => {
               marginBottom: '20px',
               transition: 'all 0.3s ease'
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.backgroundColor = '#edf2f7';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.borderColor = '#cbd5e0';
-              e.currentTarget.style.backgroundColor = '#f7fafc';
-            }}
           >
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📷</div>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📁</div>
             <p style={{
               fontSize: '18px',
               color: '#4a5568',
@@ -1110,7 +1170,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           )}
         </div>
 
-        {/* Submit Button */}
         <div style={{
           backgroundColor: 'white',
           borderRadius: '12px',
@@ -1162,14 +1221,6 @@ const SmartClaimsPage = ({ backendUrl }) => {
           }}>
             Secure • Confidential • Instant Processing
           </p>
-          <p style={{
-            fontSize: '14px',
-            color: '#667eea',
-            margin: '12px 0 0',
-            fontWeight: '600'
-          }}>
-            💳 Payment: $99.00 (via PayPal)
-          </p>
         </div>
 
         <div style={{
@@ -1182,13 +1233,11 @@ const SmartClaimsPage = ({ backendUrl }) => {
           <p>🔐 Your data is encrypted and secure</p>
           <p>📧 Questions? Contact support@smartclaims.ai</p>
           <p style={{ marginTop: '10px', fontSize: '10px' }}>
-            Backend: {BACKEND_URL} • Payment Gateway: {PAYMENT_GATEWAY_URL}<br/>
-            Status: <span style={{ color: '#10b981' }}>● Connected</span>
+            Backend: {BACKEND_URL} • Status: <span style={{ color: '#10b981' }}>● Connected</span>
           </p>
         </div>
       </div>
-      
-      {/* Payment Status Popup */}
+          {/* Payment Status Popup */}
       {paymentStatus && (
         <>
           <div style={{
