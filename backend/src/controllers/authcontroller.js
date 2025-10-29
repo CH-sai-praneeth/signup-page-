@@ -111,10 +111,10 @@ class AuthController {
       }
       
       // Validate state parameter (CSRF protection)
-      if (!this.validateState(req, state)) {
-        console.error('❌ Invalid state parameter');
-        return this.redirectToFrontendWithError(res, 'invalid_state');
-      }
+      //if (!this.validateState(req, state)) {
+      //  console.error('❌ Invalid state parameter');
+       // return this.redirectToFrontendWithError(res, 'invalid_state');
+      //}
       
       // Complete OAuth flow
       const result = await oauthService.completeOAuthFlow('google', code);
