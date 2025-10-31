@@ -489,15 +489,21 @@ const SmartClaimsPage = ({ backendUrl }) => {
             onClick={async () => {
               try {
                 const authToken = localStorage.getItem('authToken');
-                const response = await fetch(`${BACKEND_URL}/api/payment/create-order`, {
+                // ✅ Your ngrok URL
+                const PAYMENT_GATEWAY_URL = 'https://kristin-interjectional-sharita.ngrok-free.dev';
+                const API_KEY = 'sk_smartclaims_live_xxx';
+      
+                const response = await fetch(`${PAYMENT_GATEWAY_URL}/api/payment/create-order`, {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${authToken}`,
+                    'X-API-Key': API_KEY,
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
                     amount: 29.99,
-                    claimId: 'test-123'
+                    claimId: 'test-123',
+                    returnToken: authToken
                   })
                 });
 
@@ -509,6 +515,7 @@ const SmartClaimsPage = ({ backendUrl }) => {
                   alert('Payment failed: ' + result.message);
                 }
               } catch (error) {
+                console.error('Payment error:', error);
                 alert('Payment error: ' + error.message);
               }
             }}

@@ -5,6 +5,9 @@ const session = require('express-session');
 const helmet = require('helmet');
 const { initializeDatabase } = require('./src/config/database');
 const oauthService = require('./src/services/oauthService');
+const { authenticateApiKey } = require('./src/middleware/apiKeyAuth');
+////const PaymentRecord = require('./src/models/PaymentRecord');(add this when u want to save the data of payment records in the database)
+
 
 console.log('🔍 Environment check - BASE_URL:', process.env.BASE_URL);
 console.log('🔍 Environment check - BACKEND_URL:', process.env.BACKEND_URL);
@@ -266,6 +269,7 @@ app.post('/auth/logout', (req, res) => {
   }
 });
 
+
 // ===========================
 // 🏠 PROPERTY API ROUTES
 // ===========================
@@ -404,6 +408,64 @@ app.get('/api/property/health', async (req, res) => {
 // =====================================
 const documentRoutes = require('./src/routes/document');
 app.use('/api/document', documentRoutes);
+
+
+// =======================================
+// 💳 PAYMENT WEBHOOK (from Payment Gateway)
+// =======================================
+app.post('/api/payment/webhook', authenticateApiKey, async (req, res) => {
+  try {
+    const {
+      orderId,
+      transactionId,
+      status,
+      amount,
+      userId,
+      claimId,
+      payerEmail,
+      metadata
+    } = req.body;
+
+    console.log(`💰 Payment webhook received`);
+    console.log(`   Order ID: ${orderId}`);
+    console.log(`   Status: ${status}`);
+    console.log(`   Amount: $${amount}`);
+    console.log(`   User ID: ${userId}`);
+    console.log(`   Claim ID: ${claimId}`);
+    console.log(`   App: ${req.app.appName}`);
+
+    // Log payment record for traceability
+    const paymentRecord = {
+      orderId,
+      transactionId,
+      userId,
+      claimId,
+      amount,
+      status,
+      payerEmail,
+      appName: req.app.appName,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('✅ Payment record:', paymentRecord);
+    ////console.log('✅ Payment saved to database:', paymentRecord._id);(use this when u want to save the records in database and delete the upper line)
+    // TODO (Future): Save to database when you add MongoDB payment records
+    // await PaymentRecord.create(paymentRecord);
+
+    res.json({
+      success: true,
+      message: 'Webhook received',
+      orderId: orderId
+    });
+
+  } catch (error) {
+    console.error('❌ Payment webhook error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 
 // ===========================
