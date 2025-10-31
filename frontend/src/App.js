@@ -10,18 +10,15 @@ const PaymentStatusLine = () => {
     // Check URL parameters for payment status
     const urlParams = new URLSearchParams(window.location.search);
     const payment = urlParams.get('payment');
-    
-    // Get all token parameters and use the one that's not empty
-    const allTokens = urlParams.getAll('token');
-    const token = allTokens.find(t => t && t.trim() !== '') || null;
-    
+    const fullOrderId = urlParams.get('orderId');
+        
     if (payment) {
       setStatus(payment);
-      if (token) setOrderId(token);
+      if (fullOrderId) setOrderId(fullOrderId);
       
       // Save to sessionStorage so it persists during the session
       sessionStorage.setItem('paymentStatus', payment);
-      if (token) sessionStorage.setItem('paymentOrderId', token);
+      if (fullOrderId) sessionStorage.setItem('paymentOrderId', fullOrderId);
     } else {
       // Check if we have a saved status
       const saved = sessionStorage.getItem('paymentStatus');
@@ -74,6 +71,7 @@ const PaymentStatusLine = () => {
           // Also clean the URL
           const url = new URL(window.location);
           url.searchParams.delete('payment');
+          url.searchParams.delete('orderId');
           window.history.replaceState({}, '', url);
         }}
         style={{
