@@ -6,3 +6,6 @@ backend/.env.*
 backend/.env.bak
 *.env
 .env*
+.dockerignore
+Dockerfile
+docker-compose.yml
